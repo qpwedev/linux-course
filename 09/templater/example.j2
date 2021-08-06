@@ -1,0 +1,8 @@
+Height is {{ height }} m ({{ height | m2ft | round | int }} feet).
+
+The number is {{ number }} ({{ number | arabic2roman }}).
+
+The colors are: {% set comma = joiner(", ") %}{% for COLOR in colors %}{{ comma() }}{{ COLOR }}{% endfor %}.
+
+{{ content }}
+

@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+
+import argparse
+import jinja2
+from roman import toRoman
+import yaml
+import io
+import os
+import sys
+
+
+def jinja_filter_meters_to_feet(text):
+    return float(text) * 3.2808
+
+
+def get_jinja_environment(template_dir):
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
+                             autoescape=jinja2.select_autoescape(['html', 'xml']),
+                             extensions=['jinja2.ext.do'])
+    env.filters['m2ft'] = jinja_filter_meters_to_feet
+    env.filters['arabic2roman'] = toRoman
+    return env
+
+def main(argv):
+    args = argparse.ArgumentParser(description='Templater')
+    args.add_argument('--template',
+                      dest='template',
+                      required=True,
+                      metavar='FILENAME.j2',
+                      help='Jinja2 template file')
+    args.add_argument('--input',
+                      dest='input',
+                      required=True,
+                      metavar='INPUT',
+                      help='Input filename')
+
+
+    config = args.parse_args(argv)
+    
+    env = get_jinja_environment(os.path.dirname(config.template))
+    template = env.get_template(config.template)
+    content = ""
+
+    with open(config.input, 'r') as f:
+        f.readline()
+        generator = yaml.load_all(f, Loader=yaml.FullLoader)
+        dicts = []
+        for i in generator:
+            if type(i) is dict:
+                dicts.append(i)
+            else:
+                content += i
+
+        
+    vars = {
+        'content': content,
+        'TEMPLATE': config.template,
+        'INPUT': config.input,
+    }
+    for i in dicts:
+        for k, v in i.items():
+            vars[k] = v
+        
+    # Use \n even on Windows
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, newline='\n')
+    
+    result = template.render(vars)
+    
+    print(result)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
+

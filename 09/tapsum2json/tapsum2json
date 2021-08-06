@@ -1,0 +1,32 @@
+#!/bin/bash
+
+temp_file=$( mktemp )
+counter=0
+echo '{ "summary": [' > "$temp_file"
+
+for file in "$@"; do
+	counter=$(( counter + 1 )) 
+	if ! [ -f "$file" ]; then
+		total=0
+		failed=0
+		skipped=0
+		passed=0
+	else
+		total=$( tappy "$file" 2>&1 | grep "Ran" | cut -d " " -f 2 )
+		failed=$( tappy "$file" 2>&1 | grep -o "failures=[0-9]*" | cut -d "=" -f 2 )
+		skipped=$( tappy "$file" 2>&1 | grep -o "skipped=[0-9]*" | cut -d "=" -f 2 )
+		passed=$(( total - failed - skipped ))
+	fi
+	filename=$( basename "$file")
+	echo "{\"filename\": \"$filename\"," >> "$temp_file"
+	echo "\"total\": ${total:-0}," >> "$temp_file"
+	echo "\"passed\":${passed:-0}," >> "$temp_file"
+	echo "\"skipped\": ${skipped:-0}," >> "$temp_file"
+	echo "\"failed\": ${failed:-0}}" >> "$temp_file"
+	if [ $counter -lt "$#" ]; then echo "," >> "$temp_file" ;fi
+	
+done
+
+echo "]}" >> "$temp_file"
+json_reformat < "$temp_file"
+rm -f "$temp_file"
